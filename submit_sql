@@ -1,0 +1,48 @@
+function _submitsql
+ {
+    if [[ -z $1 ]] || [[ -z $2 ]] || [[ -z $3 ]]
+  then
+        echo "`date` : _orasql(3) $1:$2:$3"
+        SQLVAR=""
+  else
+echo "In else"
+        SQLLOGON=$1
+        SQLSUBMIT=$2
+        SQLERROR=$3
+
+        SQLVAR=$( ${ORA_BIN}sqlplus -s ${SQLLOGON} << EOF
+SET PAGESIZE 0
+SET FEEDBACK OFF
+SET ECHO OFF
+SET VERIFY OFF
+SET DEFINE OFF
+SET LINESIZE 5000
+WHENEVER SQLERROR EXIT SQL.SQLCODE;
+${SQLSUBMIT}
+commit;
+EXIT;
+EOF
+)
+fi
+
+RC=$?
+echo "RC is ${RC}"
+sleep 10s
+if [[ "${RC}" -ne 0 ]]
+then
+  echo "SQLVAR is ${SQLVAR}"
+  export MSG="-999"
+  return "${RC}"
+else
+  echo "In else-"
+  echo "SQLVAR is ${SQLVAR}"
+  export MSG=$SQLVAR
+  return "${RC}"
+fi
+
+SQLVAR=`echo "${SQLVAR}" | grep -v 'ORA-28002'`
+ }
+
+
+
+_submitsql ${VID_CONN_STRING} "SELECT COUNT(1) FROM ${TABLENAME};" "UNABLE TO GET COUNT OF ROWS OF TABLE ${TABLENAME} IN SOURCE DB"
